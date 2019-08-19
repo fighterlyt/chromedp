@@ -1,6 +1,6 @@
 module github.com/fighterlyt/chromedp
 
-go 1.11
+go 1.12
 
 require (
 	github.com/chromedp/cdproto v0.0.0-20190812224334-39ef923dcb8d
