@@ -7,7 +7,7 @@ import (
 	"github.com/chromedp/cdproto/dom"
 	"github.com/chromedp/cdproto/input"
 
-	"github.com/chromedp/chromedp/kb"
+	"github.com/fighterlyt/chromedp/kb"
 )
 
 // MouseAction are mouse input event actions
@@ -82,6 +82,67 @@ func MouseClickNode(n *cdp.Node, opts ...MouseOption) MouseAction {
 		y /= float64(c / 2)
 
 		return MouseClickXY(x, y, opts...).Do(ctx)
+	})
+}
+func MouseMoveNode(n *cdp.Node, deltaX, deltaY float64, opts ...MouseOption) MouseAction {
+	return ActionFunc(func(ctx context.Context) error {
+		var pos []float64
+		err := EvaluateAsDevTools(snippet(scrollIntoViewJS, cashX(true), nil, n), &pos).Do(ctx)
+		if err != nil {
+			return err
+		}
+
+		box, err := dom.GetBoxModel().WithNodeID(n.NodeID).Do(ctx)
+		if err != nil {
+			return err
+		}
+
+		c := len(box.Content)
+		if c%2 != 0 || c < 1 {
+			return ErrInvalidDimensions
+		}
+
+		var x, y float64
+		for i := 0; i < c; i += 2 {
+			x += box.Content[i]
+			y += box.Content[i+1]
+		}
+		x /= float64(c / 2)
+		y /= float64(c / 2)
+
+		p := &input.DispatchMouseEventParams{
+			Type:       input.MousePressed,
+			X:          x,
+			Y:          y,
+			Button:     input.ButtonLeft,
+			ClickCount: 1,
+		}
+
+		// apply opts
+		for _, o := range opts {
+			p = o(p)
+		}
+
+		if err := p.Do(ctx); err != nil {
+			return err
+		}
+		p = &input.DispatchMouseEventParams{
+			Type:       input.MouseReleased,
+			X:          x + deltaX,
+			Y:          y + deltaY,
+			Button:     input.ButtonLeft,
+			ClickCount: 1,
+		}
+
+		// apply opts
+		for _, o := range opts {
+			p = o(p)
+		}
+
+		if err := p.Do(ctx); err != nil {
+			return err
+		}
+		return nil
 	})
 }
 
